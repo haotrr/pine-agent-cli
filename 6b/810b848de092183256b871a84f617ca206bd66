@@ -1,0 +1,50 @@
+engine/service.go
+  s_496b836c295ba4::t_7c88b6b89b7d47 77-80,109,124-136,207
+  s_496b836c295ba4::t_003ad58a1969df 114
+  s_496b836c295ba4::t_04292563bc1792 115
+docs/development.md
+  s_496b836c295ba4::t_0271f7f95d91b8 31,55-56,93,95,97,141-150
+docs/sdk-contract.md
+  s_496b836c295ba4::t_0271f7f95d91b8 19-30
+docs/verification.md
+  s_496b836c295ba4::t_75a426ed85d5bf 34-47
+docs/TODO.md
+  s_496b836c295ba4::t_0271f7f95d91b8 34-43
+  s_496b836c295ba4::t_75a426ed85d5bf 44
+skills/pine-delegate/SKILL.md
+  s_496b836c295ba4::t_0271f7f95d91b8 29,31-33
+README.md
+  s_496b836c295ba4::t_0271f7f95d91b8 51-52,55,57,115-122
+cmd/root.go
+  s_496b836c295ba4::t_7c88b6b89b7d47 342-354
+engine/state.go
+  s_496b836c295ba4::t_7c88b6b89b7d47 18-19
+engine/adapter_test.go
+  s_496b836c295ba4::t_04292563bc1792 1-245
+engine/evidence.go
+  s_496b836c295ba4::t_f33a2abc42513e 40
+  s_496b836c295ba4::t_04292563bc1792 97-99
+  s_496b836c295ba4::t_7c88b6b89b7d47 1-39,41-96,100-163
+engine/pine.go
+  s_496b836c295ba4::t_04292563bc1792 149-156,166,173,177
+  s_496b836c295ba4::t_c4af27c3b0606d 15,46-47,73,77,110,115,119,126,134,142,158,185,190,197
+  s_496b836c295ba4::t_7c88b6b89b7d47 51,54-56,58,61,64-68,92,163,167-172,174-176,198-204
+engine/types.go
+  s_496b836c295ba4::t_7c88b6b89b7d47 10-15,18-21,24-29,35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6b810b848de092183256b871a84f617ca206bd66",
+  "prompts": {},
+  "sessions": {
+    "s_496b836c295ba4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a161a5-5fc8-7110-9c4f-227d27bb53b6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}

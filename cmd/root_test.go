@@ -70,3 +70,46 @@ func TestCreateApprovalGates(t *testing.T) {
 		}
 	}
 }
+
+func TestRunTokenBudget(t *testing.T) {
+	dir := t.TempDir()
+	base := []string{"--mode", "mock", "--state-dir", filepath.Join(dir, "state")}
+	call := func(args ...string) (int, map[string]any) {
+		code, v, _ := invoke(t, append(append([]string{}, base...), args...)...)
+		return code, v
+	}
+	if code, v := call("session", "create", "demo"); code != 0 {
+		t.Fatal(v)
+	}
+	goal := filepath.Join(dir, "goal.txt")
+	if err := os.WriteFile(goal, []byte("read only"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	run := []string{"task", "run", "--request-id", "same", "--goal-file", goal}
+	code, first := call(run...)
+	if code != 0 {
+		t.Fatal(first)
+	}
+	code, zero := call(append(append([]string{}, run...), "--max-tokens", "0")...)
+	if code != 0 || first["data"].(map[string]any)["turn_id"] != zero["data"].(map[string]any)["turn_id"] {
+		t.Fatal("default and explicit zero must replay same request", zero)
+	}
+	// A positive override changes the persisted request digest; it must not silently replay.
+	code, changed := call(append(append([]string{}, run...), "--max-tokens", "50000")...)
+	if code != 6 || changed["error"].(map[string]any)["code"] != "request_mismatch" {
+		t.Fatal(changed)
+	}
+	for _, flags := range [][]string{{"--max-tokens", "-1"}, {"--max-wall", "0s"}, {"--max-wall", "61m"}} {
+		code, v := call(append(append([]string{}, run...), flags...)...)
+		if code != 2 || v["error"].(map[string]any)["code"] != "argument" {
+			t.Fatal(flags, v)
+		}
+	}
+	// A positive budget is accepted on a fresh request.
+	if code, v := call("task", "wait"); code != 0 {
+		t.Fatal(v)
+	}
+	if code, v := call("task", "run", "--request-id", "positive", "--goal-file", goal, "--max-tokens", "50000"); code != 0 {
+		t.Fatal(v)
+	}
+}

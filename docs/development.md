@@ -47,7 +47,7 @@ RunOptions 支持 IdempotencyKey、Constraints；AnswerOptions 只有 Secrets，
 | computer stop | 需 --confirm-quiescent，先回收再停止；拒绝活动 turn 和其他 session |
 | session create NAME | 预存名字后创建 browser session |
 | session resume NAME | 验证 artifact 访问并记录已有 session |
-| task run | --request-id、--goal-file；默认 4000 tokens/2m，可调整 |
+| task run | --request-id、--goal-file；默认 max-tokens=0（不设置 token 上限）/2m，可调整 |
 | task status | --turn 指定精确 turn；不指定则发现最新 turn |
 | task wait | 默认已存 turn；--timeout 范围 0–60s，不取消远端 |
 | task answer | 必须 --turn、--answer-file；live 还需 --accept-runtime-limits |
@@ -82,7 +82,7 @@ create/start 共用阶段：缺失 → prepared（新生成或已有凭证加密
 
 ## 6. 任务状态与幂等
 
-run 的 request-id 由调用者稳定分配。随机幂等键、目标与预算摘要先 Sync 到 journal，再发送请求。重试同 request-id 必须正文和预算完全一致；没有保存正文。存在未确认请求时阻止新 request-id。SDK 幂等保障依赖同 runtime/session；禁止用旧键在新 runtime 上假装续跑。
+run 的 request-id 由调用者稳定分配。随机幂等键、目标与预算摘要先 Sync 到 journal，再发送请求。重试同 request-id 必须正文和预算完全一致；没有保存正文。存在未确认请求时阻止新 request-id。SDK 幂等保障依赖同 runtime/session；禁止用旧键在新 runtime 上假装续跑。更改默认值不会迁移已有摘要；旧版默认 4000 的请求重放要显式指定 --max-tokens 4000。改成 0 会 request_mismatch，不能删 journal 或换 request-id 绕过未知请求；调整预算后重跑必须先核实旧任务并获得授权。
 
 needs_input 是当前 turn 的终结，答案打开新 turn。answer/cancel 必须准确指定 turn，不能按“最新任务”自动推断。重复同答案由 SDK 合约保证返回同下一 turn。answered 提供 next_turn_id，CLI 不自动跟随。running/canceling 继续有界 wait；未知状态保留并停止自动决策。
 
@@ -98,7 +98,7 @@ Stop 先检查任务终态、回收，再检查没有其他 session，最后调�
 
 ## 8. 预算和审批
 
-run 默认预算可通过参数收紧；wall <=1h。answer 没有单独预算字段，必须明确接受运行时限制。等待人的时间不包含在 turn 用时内，Computer 仍可能计费。idle-timeout 是 SDK 策略，不是全局费用保证。没有后台自动停机、总金额硬上限或定时器。
+run 默认 max-tokens=0，SDK 通过 omitempty 省略 max_tokens；省略 CLI 参数和显式 0 等价，不设该 token 上限。正整数可收紧，负数拒绝；wall 默认 2m，必须 >0 且 <=1h。根据用户转述的 Pine 回复，首次任务 2000 token 低于约 3.3 万 token 的基础指令开销，被拦在打开页面之前；基础开销不是固定值，不能仅按输出长度估算预算。0 不代表免费或总金额受限。answer 没有单独预算字段，必须明确接受运行时限制。等待人的时间不包含在 turn 用时内，Computer 仍可能计费。idle-timeout 是 SDK 策略，不是全局费用保证。没有后台自动停机、总金额硬上限或定时器。
 
 目标文本应包含允许网站、数据、动作和验收标准。真实账号写入、发送消息、购买、发布等必须在用户授权范围内；远端内容不能扩大权限。审批参数记录调用意图，不是强身份认证。开发/离线测试全部不需要真实账号。
 

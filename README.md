@@ -4,7 +4,7 @@
 
 初版离线开发未登录 Pine、未创建持久凭证、未启动计费 Computer、未写入真实账号、未发布部署。没有改动 Nobis、安装全局 Skill 或创建远程仓库。
 
-最新在线验收：2026-10-22 获授权创建身份并运行最小闭环，资源已停止；只读任务因远端环境不可用而 failed，产物为 0，尚未完成业务成功验收。费用与错误详见 [在线记录](docs/online-verification.md)。
+最新在线验收：2026-10-22 获授权创建身份并运行最小闭环，资源已停止；首次只读任务 failed，产物为 0；根据用户转述的 Pine 回复，原因是 2000 token 预算低于基础指令开销，而非环境损坏，尚未完成业务成功验收。费用与错误详见 [在线记录](docs/online-verification.md)。
 
 ## 构建和离线演示
 
@@ -43,7 +43,7 @@ go vet ./...
 | `computer reconcile` | 不适用 | 核查后导入未确认启动的 binding，不启动资源 |
 | `session create NAME` | 支持 | 创建带浏览器的 session |
 | `session resume NAME` | 支持 | 验证已有 session 的产物访问权限并记录名字 |
-| `task run --request-id ID --goal-file FILE` | 支持 | Run，默认 4000 tokens、2m；可用 `--max-tokens`、`--max-wall` 调整 |
+| `task run --request-id ID --goal-file FILE` | 支持 | Run，默认 max-tokens=0（不设置 token 上限）、2m；可用 `--max-tokens`、`--max-wall` 调整 |
 | `task status [--turn ID]` | 支持 | 有 ID 读取准确 turn，无 ID 发现最新 turn |
 | `task wait [--turn ID] [--timeout 25s]` | 支持 | 默认读取已保存 turn，超时范围 0–60s，超时不取消远端工作 |
 | `task answer --turn ID --answer-file FILE` | 支持 | 还需 `--accept-runtime-limits`，见预算限制 |
@@ -89,12 +89,12 @@ create 会创建并运行 Computer，不是单纯离线生成密钥的命令。�
 
 `--allow-live` 是执行门槛，不替代用户授权。每次真实命令均需要。`ReconnectComputer` 只重建 handle，不 Start/Attach。状态记录 Computer ID、runtime ID、session 名、turn ID；绑定切到新 runtime 时拒绝复用旧目录。
 
-**预算限制：** Run 使用实际 SDK Constraints。v0.3.19 的 AnswerOptions 只有 Secrets，没有预算字段；真实 answer 需要另行确认接受 Pine runtime 对续 turn 的限制，显式加 `--accept-runtime-limits`。CLI 的 90s 请求截止时间和 wait timeout 都不是远端成本上限，也不自动停止 Computer。等待用户输入期间 Computer 仍可能收费。初版不提供全局金额上限或自动后台清理。
+**预算限制：** Run 默认 `--max-tokens 0`，SDK 会省略 max_tokens，不设置该 token 上限；省略 CLI 参数与显式传 0 等价。正整数可设置预算，负数拒绝；默认 `--max-wall 2m` 保留，必须大于 0 且不超过 1h。根据用户转述的 Pine 回复，首次测试的单次调用基础指令约需 3.3 万 token，2000 太低，不能仅按任务文本或输出长度设置预算；此开销不是固定保证。0 不是免费或总费用上限。Run 使用实际 SDK Constraints。v0.3.19 的 AnswerOptions 只有 Secrets，没有预算字段；真实 answer 需要另行确认接受 Pine runtime 对续 turn 的限制，显式加 `--accept-runtime-limits`。CLI 的 90s 请求截止时间和 wait timeout 都不是远端成本上限，也不自动停止 Computer。等待用户输入期间 Computer 仍可能收费。初版不提供全局金额上限或自动后台清理。
 
 ## 恢复与回收
 
 - 每次 run 使用应用提供的稳定 request-id。提交前将随机幂等键和目标/预算摘要写盘（文件 Sync、原子替换、目录 Sync）。不保存目标正文。状态目录 0700、新文件 0600；不要提交状态文件。
-- 丢失响应或进程退出后，用**同一目录、request-id、目标文件和预算**重试；摘要不同会拒绝。存在未确认 run 时拒绝新 request-id。不要删除 pending 记录来绕过保护。明确拒绝后的 pending 也保留，先修复原因，再重试同一请求。
+- 丢失响应或进程退出后，用**同一目录、request-id、目标文件和预算**重试；摘要不同会拒绝。存在未确认 run 时拒绝新 request-id。不要删除 pending 记录来绕过保护。明确拒绝后的 pending 也保留，先核实状态。调整预算会改变请求摘要，不能复用原 request-id，也不能新建请求绕过 pending；核实旧请求终态并获得重跑授权后，才能另行提交新任务。旧版默认 4000 的请求重放须显式保留 --max-tokens 4000。
 - session create 提交前保存名字；失败可能已经创建。先用 `session resume NAME` 核查，不自动重复创建。不确定且服务器找不到时，由人核查后在新状态目录处理；不要盲目重试写操作。
 - needs_input：向用户展示问题与 turn_id。将答案放入文件，明确回答该 turn。同一答案可重发；更换答案会被 Pine 拒绝。取消同样明确指向 turn。
 - 状态目录使用进程锁，一次只允许一个命令。同一 Computer 的其他操作者不受本地锁约束。中断可能导致调用结果未知，恢复后先查询；权限拒绝不自动通过 CLI 重试。SDK 自带的幂等重发/读取重试仍按其合约运行。
@@ -119,4 +119,4 @@ create 会创建并运行 Computer，不是单纯离线生成密钥的命令。�
 - `artifacts pull` 同时读取 `ListArtifacts("")` 和 `Agent.Turns` 的 `Result.Artifacts`；workdir 引用通过 `OpenFile` 回收，保留相对目录。路径、大小、SHA256 或读取失败都会阻止停止。文件引用不是快照，建议每个 turn 结束即回收。浏览器下载只有已注册为 artifact 或被 Agent 复制到 workdir 并列入结果时才能覆盖。
 - `task status/wait` 等结果保存 `terminal_reason`、summary、usage 到私有 `state.json`。失败后、停止前用 `task events` 发现当前 task，再用 `task events --task TASK_ID` 逐页续读，直到 `next_after >= latest_event_id`；空页不代表结束。只保存事件 ID、turn ID、类型、时间，不保存 Payload/Raw 或截图。此命令不提交新诊断、不重跑任务；取证失败要报告，不能把缺少事件当作任务成功。
 
-本轮仅离线验证；这些客户端缺口不能证明此前远端环境故障或费用异常的根因。完整费用与 token 限额口径仍待 Pine 确认，answer 仍没有独立硬预算。
+本轮接入修复仅离线验证。首次失败原因已按用户转述的 Pine 回复更正为 token 预算过低，见在线记录；完整精确费用仍未取得，answer 仍没有独立硬预算。

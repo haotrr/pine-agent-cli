@@ -29,8 +29,8 @@
 - [x] 获明确授权，Keychain 保存本次宿主包装密钥，CLI 加密保存新身份。
 - [x] 创建、会话、Run/Wait、空产物回收及停止；已停止资源。
 - [x] 记录 Agent 实际计价和 failed 行为：[在线记录](online-verification.md)。
-- [ ] 只读业务成功与非空产物下载：远端环境不可用，未通过。
-- [ ] Computer/egress 完整账单、token 限额口径和远端根因待核实。
+- [ ] 只读业务成功与非空产物下载：未通过；首次原因已据 Pine 回复更正为 token 预算过低。
+- [ ] Computer/egress 完整精确账单仍待核实；首次原因与预算说明见 online-verification.md。
 
 
 ## 接入修复（2026-10-22，离线）
@@ -42,3 +42,11 @@
 - [x] 保存 terminal_reason、安全 API 错误标识，新增逐页事件元数据回收。
 - [x] 更新文档与 Skill，补 SDK 签名替身的离线回归测试。
 - [x] race、vet、构建及 Skill 校验；验证边界见 verification.md。
+
+
+## 默认预算更正（2026-10-22）
+
+- [x] 根据用户转述的 Pine 回复更正首次失败原因；不外推第二次根因。
+- [x] max-tokens 默认 0、允许 0、拒绝负数，保留正数覆盖和 wall 校验。
+- [x] 补默认/显式零值、正数、负数、时间限制、幂等摘要及 SDK 序列化离线测试。
+- [x] 更新 README、开发文档、在线记录与 Skill；本轮不重启或重跑在线任务。

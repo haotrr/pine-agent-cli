@@ -28,3 +28,6 @@
 | EventsPage 的 Limit 是扫描数量 | 逐页持久化 NextAfter，空页也可能尚未结束；ExpectedTaskID 绑定游标；只保留事件元数据 |
 
 离线测试只证明客户端适配和持久化行为，不证明远端环境恢复，也不解释既有 token/费用差异；未重启资源或重跑在线任务。
+
+
+2026-10-22 预算更正：按用户转述的 Pine 支持回复，首次 readonly-check 的 2000 token 预算低于约 3.3 万 token 的基础指令开销，失败并非环境损坏。CLI 默认改为 0，负数拒绝；本地 v0.3.19 的 AgentRunConstraints.MaxTokens 使用 omitempty，0 在 JSON 中省略，MaxWallMs 仍正常发送。这不会给 answer 增加预算字段，也不提供总金额上限。本次只做离线验证。

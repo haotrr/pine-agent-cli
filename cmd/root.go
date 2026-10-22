@@ -252,8 +252,8 @@ func NewRoot() *cobra.Command {
 		if s.Store.State.Session == "" {
 			return engine.Fail("session", "create or resume a session", 6)
 		}
-		if request == "" || file == "" || tokens <= 0 || wall <= 0 || wall > time.Hour {
-			return engine.Fail("argument", "request-id, goal-file and positive limits (wall <= 1h) required", 2)
+		if request == "" || file == "" || tokens < 0 || wall <= 0 || wall > time.Hour {
+			return engine.Fail("argument", "request-id, goal-file, nonnegative max-tokens (0 = no token cap) and positive max-wall <= 1h required", 2)
 		}
 		b, e := os.ReadFile(file)
 		if e != nil {
@@ -270,7 +270,7 @@ func NewRoot() *cobra.Command {
 	})}
 	run.Flags().StringVar(&request, "request-id", "", "durable application message ID; reuse on lost response")
 	run.Flags().StringVar(&file, "goal-file", "", "UTF-8 task text; never put credentials in goals")
-	run.Flags().IntVar(&tokens, "max-tokens", 4000, "per turn token budget")
+	run.Flags().IntVar(&tokens, "max-tokens", 0, "per turn token budget; 0 (default) omits the token cap; not a cost limit")
 	run.Flags().DurationVar(&wall, "max-wall", 2*time.Minute, "per turn wall limit")
 	task.AddCommand(run)
 	for _, op := range []string{"status", "wait", "cancel", "answer"} {

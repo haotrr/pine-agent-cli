@@ -18,7 +18,7 @@ description: 使用 pine-agent CLI 将有明确边界的任务委托给 Pine 自
 ## 调用和恢复
 
 1. 为一项任务选择私有 state-dir；mock/live 必须分开。创建 session 或 resume 已有名字，保存这个目录用于之后恢复。
-2. 把无秘密目标写到 goal 文件。`task run --request-id STABLE_ID --goal-file FILE --max-tokens N --max-wall D`。request-id 在提交前确定；同一逻辑请求重试必须相同，文件与预算也相同。
+2. 把无秘密目标写到 goal 文件。`task run --request-id STABLE_ID --goal-file FILE --max-tokens 0 --max-wall D`。max-tokens 默认 0（SDK 省略该字段，不设置 token 上限），不是免费或金额上限；正数仅在有足够预算依据时设置，负数无效。根据用户转述的 Pine 回复，首次 readonly-check 因 2000 低于约 3.3 万 token 的基础指令开销而失败，不是环境损坏；不要把 2000/4000 作为通用低成本默认值。max-wall 默认 2m，可保留或调整为正数且不超过 1h。request-id 在提交前确定；同一逻辑请求重试必须相同，文件与预算也相同。旧版默认 4000 的请求重放须显式指定 4000；不能把旧请求直接改成 0，也不能换 request-id 绕过 pending。先核实旧任务终态，获准重跑后再提交新的预算和请求。
 3. 保存 JSON 的 turn_id。`task wait` 是有界轮询，timeout 不取消远端任务。不要无限高频轮询。断线后查询准确 turn；run 结果未知时重发相同 request-id，不能创建新请求规避 pending。
 4. needs_input：显示问题和准确 turn_id，由用户回复后 `task answer --turn ID --answer-file FILE`。live 还需 `--accept-runtime-limits`：实际 SDK 不支持单独限制 answer 预算，必须让用户明确接受运行时限制后再继续。不得把 run 的预算声称为续 turn 的可靠上限。
 5. answered：按 next_turn_id 显式读取；不要重新回答旧 turn。取消用 `task cancel --turn ID`，canceling 后继续有界 wait 到终态。未知状态停下解释，不当作完成。

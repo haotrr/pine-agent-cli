@@ -45,3 +45,9 @@ live start 已实现官方 StartComputer 和 AES-256-GCM 可插拔 Vault，需�
 - 错误/无效/倒退游标和不匹配 task 不得作为有效事件页。
 
 `go test ./...`、`go test -race ./...`、`go vet ./...`、构建和 Skill `quick_validate.py` 均通过；`git diff --check` 通过。固定 SDK v0.3.19 未改动。测试使用本地接口替身和合成 SDK 类型，不包含真实网络或 SDK HTTP 线级契约验收，不读取真实凭证或 Keychain，不重启资源、不重跑在线任务。本轮未更新旧源码 ZIP，也不把修复作为远端故障根因已确认的证据。
+
+## 默认 token 预算更正（2026-10-22，仅离线）
+
+共 31 个测试函数（含子用例）。新增 CLI 回归覆盖省略 max-tokens 与显式 0 的同请求重放、正数覆盖、预算变化触发 request_mismatch、负数拒绝以及 wall 非正/超过 1h 拒绝；SDK JSON 测试确认 0 省略 max_tokens、正数原样发送、max_wall_ms=60000 保留。
+
+`go test ./...`、`go test -race ./...`、`go vet ./...`、构建、Skill quick_validate 和 git diff --check 均通过。构建产物的 task run --help 已显示默认 0 及非费用上限说明。没有修改 SDK、读取真实凭证、重启资源或重跑在线任务；本轮没有验证取消 token 上限后的在线业务成功。首次失败原因依据用户转述的 Pine 回复更正，第二次原因不直接外推。

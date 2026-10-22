@@ -15,6 +15,8 @@ type Submission struct {
 	Turn   string `json:"turn_id,omitempty"`
 }
 type State struct {
+	Results  map[string]*Turn      `json:"turn_results,omitempty"`
+	Events   map[string]*EventPage `json:"task_events,omitempty"`
 	Runtime  string                `json:"runtime_id"`
 	Version  int                   `json:"version"`
 	Mode     string                `json:"mode"`

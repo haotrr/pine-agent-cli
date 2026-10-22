@@ -7,25 +7,32 @@ import (
 )
 
 type Error struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	Exit    int    `json:"-"`
+	Code        string `json:"code"`
+	Message     string `json:"message"`
+	Exit        int    `json:"-"`
+	Status      int    `json:"status,omitempty"`
+	RequestID   string `json:"request_id,omitempty"`
+	ProblemType string `json:"problem_type,omitempty"`
 }
 
-func (e *Error) Error() string                  { return e.Message }
-func Fail(code, message string, exit int) error { return &Error{code, message, exit} }
+func (e *Error) Error() string { return e.Message }
+func Fail(code, message string, exit int) error {
+	return &Error{Code: code, Message: message, Exit: exit}
+}
 
 type Turn struct {
-	ID      string `json:"turn_id"`
-	State   string `json:"state"`
-	Next    string `json:"next_turn_id,omitempty"`
-	Summary string `json:"summary,omitempty"`
-	Usage   any    `json:"usage,omitempty"`
+	ID             string `json:"turn_id"`
+	State          string `json:"state"`
+	Next           string `json:"next_turn_id,omitempty"`
+	Summary        string `json:"summary,omitempty"`
+	Usage          any    `json:"usage,omitempty"`
+	TerminalReason string `json:"terminal_reason,omitempty"`
 }
 type Artifact struct {
 	ID, Name, SHA256 string
 	Size             int64
 	Source           string
+	Path             string // Nonempty only for a validated workdir reference.
 }
 type Limits struct {
 	Tokens int

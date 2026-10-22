@@ -74,6 +74,10 @@ func (s *Service) Run(ctx context.Context, request, goal string, l Limits) (*Tur
 func (s *Service) Remember(t *Turn) (*Turn, error) {
 	if t != nil {
 		s.Store.State.Turn = t.ID
+		if s.Store.State.Results == nil {
+			s.Store.State.Results = map[string]*Turn{}
+		}
+		s.Store.State.Results[t.ID] = t
 	}
 	return t, s.Store.Save()
 }
@@ -102,21 +106,34 @@ func (s *Service) Pull(ctx context.Context, out string) (int, error) {
 		if e = ctx.Err(); e != nil {
 			return count, e
 		}
-		if v.Name == "" || v.Name == "." || v.Name == ".." || strings.ContainsAny(v.Name, "/\\\x00") {
+		if (v.Path == "" && (v.Name == "" || v.Name == "." || v.Name == ".." || strings.ContainsAny(v.Name, "/\\\x00"))) || (v.Path != "" && (v.Source != "workdir" || v.Path != v.Name || !safeWorkdirPath(v.Path))) {
 			return count, Fail("artifact_path", "unsafe artifact filename", 6)
 		}
 		key := sha256.Sum256([]byte(s.Store.State.Session + "\x00" + v.ID))
 		dir := hex.EncodeToString(key[:])
+		dest := filepath.Join(dir, v.Name)
+		dir = filepath.Dir(dest)
 		if e = root.MkdirAll(dir, 0700); e != nil {
 			return count, e
 		}
-		dest := filepath.Join(dir, v.Name)
 		tmp := filepath.Join(dir, ".part-"+ID())
 		f, e := root.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if e != nil {
 			return count, e
 		}
-		r, e := s.Backend.Open(ctx, s.Store.State.Session, v.ID)
+		var r io.ReadCloser
+		if v.Path != "" {
+			files, ok := s.Backend.(interface {
+				OpenFile(context.Context, string, string) (io.ReadCloser, error)
+			})
+			if !ok {
+				e = Fail("unsupported", "backend cannot read workdir files", 3)
+			} else {
+				r, e = files.OpenFile(ctx, s.Store.State.Session, v.Path)
+			}
+		} else {
+			r, e = s.Backend.Open(ctx, s.Store.State.Session, v.ID)
+		}
 		if e != nil {
 			f.Close()
 			root.Remove(tmp)
@@ -187,7 +204,7 @@ func (s *Service) Pull(ctx context.Context, out string) (int, error) {
 }
 func (s *Service) Stop(ctx context.Context, out string) error {
 	if s.Store.State.Session != "" {
-		t, e := s.Backend.Read(ctx, s.Store.State.Session, "", 0)
+		t, e := s.Read(ctx, "", 0)
 		if e != nil {
 			return e
 		}

@@ -28,7 +28,7 @@
 
 依赖固定为 `go.pinesandbox.io/computer v0.3.19`，go.mod/go.sum 固定传递依赖。公开模块已下载，SDK 源码已检查，正常构建包含真实适配器。官方 SDK/API 网页需要 beta 登录，模块本身公开可下载。参见 [SDK 核验](sdk-contract.md)。
 
-实际调用：NewClient、ReconnectComputer、StartComputer、Computer.Credentials/Binding、CreateSession/Session、RequireAgentProtocol、Agent.Run/Wait/Status/Answer/Cancel、ListArtifacts/OpenArtifact、Sessions、Stop。
+实际调用：NewClient、ReconnectComputer、StartComputer、Computer.Credentials/Binding、CreateSession/Session、RequireAgentProtocol、Agent.Run/Wait/Status/Answer/Cancel/Turns/EventsPage、ListArtifacts/OpenArtifact/OpenFile、Sessions、Stop。
 
 StartComputer 用已有 Credentials 启动身份；首次创建调用 GenerateCredentials，先加密落盘，再调用 CreateComputer；CLI 不调用 RecoverComputer。ReconnectComputer 重建运行中 handle，不启动或附着新 runtime。Session 名是地址；不保存 ps_，Agent 操作使用 binding 的 ct_。
 
@@ -52,7 +52,8 @@ RunOptions 支持 IdempotencyKey、Constraints；AnswerOptions 只有 Secrets，
 | task wait | 默认已存 turn；--timeout 范围 0–60s，不取消远端 |
 | task answer | 必须 --turn、--answer-file；live 还需 --accept-runtime-limits |
 | task cancel | 必须 --turn；canceling 不是终态 |
-| artifacts pull | --out；下载所有非 upload 产物，含浏览器下载 |
+| task events | 无参数发现 task；--task ID 按保存游标读取一页事件元数据 |
+| artifacts pull | --out；下载非 upload 注册产物及当前 task 的 turn workdir 引用 |
 
 stdout 为 JSON `{ok,mode,data}` 或 `{ok:false,error:{code,message}}`，进度走 stderr；帮助和 completion 例外为文本。退出码 0 表示调用成功，不表示业务成功。2=参数/配置/本地错误，3=禁用/门槛，4=凭证/权限，6=冲突/本地校验，7=远端或未知结果。`completed`、`failed`、`canceled` 均应检查结果和证据。
 
@@ -89,11 +90,11 @@ session create 先保存名字；不确定时先 resume 同名会话核查，不
 
 ## 7. 产物与生命周期
 
-ListArtifacts 使用空 turn filter，包含浏览器下载，跳过 upload。按 turn 过滤会漏掉下载。下载后才记入 journal；重复 pull 会再次校验已有文件。失败可重试回收，不盲目重跑生产这些文件的任务。
+ListArtifacts 使用空 turn filter，回收已注册的浏览器下载等产物，跳过 upload；同时通过 Agent.Turns 获取当前 task 各 turn 的 Result.Artifacts。workdir 引用必须使用 OpenFile，不能当作 artifact ID。未注册且未列入结果的下载不保证覆盖。下载后才记入 journal；重复 pull 会再次校验已有文件。失败可重试回收，不盲目重跑生产这些文件的任务。
 
-远端 filename 必须单一文件名，拒绝 `/`、反斜杠、NUL、`.`、`..`。用 session+artifact ID 的 SHA256 子目录保留原文件名；os.Root 限制符号链接逃逸；O_EXCL 临时文件和不覆盖的 Link 避免已有内容被覆盖。单文件上限 256 MiB，核对大小和可用 SHA256。已有同名文件仅在内容 hash 相同后接受。文件/目录持久化后才更新回收记录。
+注册 artifact 的远端 filename 必须单一文件名，拒绝 `/`、反斜杠、NUL、`.`、`..`。用 session+artifact ID 的 SHA256 子目录保留原文件名；os.Root 限制符号链接逃逸；O_EXCL 临时文件和不覆盖的 Link 避免已有内容被覆盖。单文件上限 256 MiB，核对大小和可用 SHA256。已有同名文件仅在内容 hash 相同后接受。文件/目录持久化后才更新回收记录。workdir 引用按 turn ID+相对路径生成独立 ID，保留子目录，拒绝绝对路径、非规范路径、反斜杠、NUL、冒号及非 workdir root。沿用 os.Root、no-clobber、大小和 hash 校验；引用并非快照，远端改写后可能校验失败，不能默认为历史文件已备份。
 
-Stop 先检查任务终态、回收，再检查没有其他 session，最后调用 SDK Stop。无 session 时可直接释放空闲 Computer；有其他 session 会拒绝。调用者确认没有正在下载或并行写入，CLI 没有远端原子冻结能力。Stop/Start 不恢复 session 文件，artifact 不是备份。
+Stop 先检查任务终态、回收，再检查没有其他 session，最后调用 SDK Stop。仅 true,nil 表示确认停止；false,nil 返回 stop_unconfirmed 且不置 Stopped，不自动重试；错误与未知结果均须先独立核实。无 session 时可直接释放空闲 Computer；有其他 session 会拒绝。调用者确认没有正在下载或并行写入，CLI 没有远端原子冻结能力。Stop/Start 不恢复 session 文件，artifact 不是备份。
 
 ## 8. 预算和审批
 
@@ -137,3 +138,13 @@ DEMO_DIR=$(mktemp -d)
 下载保留 no-clobber 和 os.Root 防逃逸，测试覆盖符号链接与内容校验。剩余风险是同用户本地篡改/密文回滚、跨目录并发和远端写入竞态，已明确限制，不声称完全消除。没有执行在线安全扫描或线上验收。
 
 首次创建与启动同样需要授权。create 不要求外部 credentials/binding，只需要宿主注入项目 key 和 Vault 包装密钥；成功后在同目录继续会话。网络失败、身份不符、binding 获取失败或 ready 保存失败均保留 pending。独立核查后 reconcile 支持 create/start 两种 pending，不证明远端健康。新建身份与 API 权限的线上可用性尚未验证。
+
+## 12. 失败证据与只读事件
+
+Turn 新增 terminal_reason，Service.Remember 将各 turn 的安全结果写入 state.json 的 turn_results；停止前状态读取也保留该记录。SDK APIError 只导出 status、符合字符限制且不匹配已知秘密的 request_id/problem_type；不输出 Detail、Title、Host 或 Raw。RunUnconfirmedError 包装的 APIError 同样可提取元数据。错误 JSON 由调用者按私有日志规范保存，不自动落盘。
+
+`task events [--task ID]` 每次最多扫描 500 条历史记录，SkipFrames=true。首次无 --task 通过 Status 发现 task ID；随后显式传同一 ID，使用 state.json 中 task_events 的 NextAfter 续读，并通过 ExpectedTaskID 防止混入新任务。空页也必须按 NextAfter 推进，直到达到 LatestEventID。API 失败、task 不符、游标倒退或不推进时不保存新游标。事件元数据与游标同一次原子写盘；可跨进程恢复。
+
+只保留事件 ID、turn ID、类型、时间，未保留 Payload/Raw、输入文本或帧，因此不是完整原始事件导出。取证是显式只读命令，不自动重跑任务，也不作为停止的强制门槛；停止前应收集所需证据，失败须说明缺口。mock 不模拟事件 API。
+
+适配测试通过与 SDK 相同签名的消费端接口注入替身；未改动固定 SDK、生成代码或第三方目录。此轮不验证服务端行为，历史在线结论见 online-verification.md。

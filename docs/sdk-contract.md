@@ -16,3 +16,15 @@
 真实 start 已使用官方 StartComputer(ctx, Credentials, StartOptions)，仅启动已有身份；StartOptions 设置 Timeout、ReadyTimeout=60s、MaxBindAttempts=1。调用前加密持久化 credentials 和 pending，成功后保存 Computer.Credentials()/Binding()。未知结果不自动 Start/Recover。SDK 能编译不意味着在线集成已验证。
 
 2026-10-22 首次创建补充：读取本地 v0.3.19 client.go、credentials.go、computer.go。GenerateCredentials 离线生成 UUIDv7、state key、capture keypair；CreateComputer 的 AttachOptions 接受完整 Credentials。CLI 在请求前保存完整凭证及 pending，设置 Timeout、ReadyTimeout=60s、MaxBindAttempts=1；不依赖 SDK 失败后才返回恢复凭证。没有执行真实身份生成或在线请求。
+
+
+2026-10-22 接入修复：对照官方 [best practices](https://console.pinecomputer.io/docs/best-practices) 与 [files and shell](https://console.pinecomputer.io/docs/files-and-shell)，离线核验 v0.3.19 源码并修复：
+
+| 合约 | CLI 行为 |
+|---|---|
+| Computer.Stop 返回 (bool,error) | 仅 true,nil 确认停止；false,nil 不得宣称停止或盲目重试 |
+| AgentResult.Artifacts 为 FileRef | 读取当前 task 的 Turns，通过 OpenFile 回收 workdir 相对路径；注册 artifact 仍用 OpenArtifact |
+| AgentResult.TerminalReason / APIError | 保留终止原因与安全的请求标识、问题类型、HTTP 状态；不导出原始错误正文 |
+| EventsPage 的 Limit 是扫描数量 | 逐页持久化 NextAfter，空页也可能尚未结束；ExpectedTaskID 绑定游标；只保留事件元数据 |
+
+离线测试只证明客户端适配和持久化行为，不证明远端环境恢复，也不解释既有 token/费用差异；未重启资源或重跑在线任务。

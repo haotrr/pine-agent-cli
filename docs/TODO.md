@@ -31,3 +31,14 @@
 - [x] 记录 Agent 实际计价和 failed 行为：[在线记录](online-verification.md)。
 - [ ] 只读业务成功与非空产物下载：远端环境不可用，未通过。
 - [ ] Computer/egress 完整账单、token 限额口径和远端根因待核实。
+
+
+## 接入修复（2026-10-22，离线）
+
+授权：修复三项接入缺口、SDK 适配测试、文档和 Skill，验证后 commit & push；不重启资源、不重跑在线任务。
+
+- [x] 严格确认 Stop 布尔返回值，未知结果不自动重试。
+- [x] 回收 turn workdir 引用，保留相对目录和完整性校验。
+- [x] 保存 terminal_reason、安全 API 错误标识，新增逐页事件元数据回收。
+- [x] 更新文档与 Skill，补 SDK 签名替身的离线回归测试。
+- [x] race、vet、构建及 Skill 校验；验证边界见 verification.md。

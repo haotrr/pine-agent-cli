@@ -339,6 +339,19 @@ func NewRoot() *cobra.Command {
 		}
 		task.AddCommand(c)
 	}
+	var eventTask string
+	events := &cobra.Command{Use: "events", Args: cobra.NoArgs, RunE: with(func(c *cobra.Command, s *engine.Service, a []string) error {
+		if s.Store.State.Session == "" {
+			return engine.Fail("session", "no session recorded", 6)
+		}
+		page, e := s.Events(c.Context(), eventTask)
+		if e != nil {
+			return e
+		}
+		return emit(c, page)
+	})}
+	events.Flags().StringVar(&eventTask, "task", "", "task ID to resume saved event cursor; omit to discover current task")
+	task.AddCommand(events)
 	root.AddCommand(task)
 	artifacts := &cobra.Command{Use: "artifacts"}
 	var output string

@@ -31,3 +31,17 @@ live start 已实现官方 StartComputer 和 AES-256-GCM 可插拔 Vault，需�
 新增覆盖：创建前凭证及 pending 加密落盘；ready 重复调用不创建；丢失响应禁止重复创建及重新生成身份；create/start 操作隔离；prepared 重试复用身份；prepared/pending/ready 三个保存位置故障；远端身份不符；endpoint 不符；核实 binding 后 reconcile 不触发新创建；缺少授权参数时不创建状态目录。
 
 测试只注入固定合成凭证和假的远端函数；没有调用 GenerateCredentials 生成真实身份，没有配置真实凭证、访问 Pine 或启动计费资源。真实 API 权限、首次创建、成本与端到端结果仍未验收。Skill `quick_validate.py` 校验通过；构建产物 `computer create --help` 检查通过。旧源码 ZIP 的解包验证仅覆盖初版，本轮未重新打包。
+
+
+## 接入修复补充验证（2026-10-22，仅离线）
+
+共 29 个测试函数（含子用例），新增 6 个 SDK 适配回归测试：
+
+- Stop 的 true/false/error 组合、只调用一次、未确认时内存和磁盘均不标记停止。
+- 非 upload 注册产物与 workdir 引用合并，保持空 turn filter；Open/OpenFile 分流、相对目录、task 不存在及读取失败。
+- workdir 路径/根类型拒绝、checksum 不符阻止停止。
+- terminal_reason 落盘、RunUnconfirmedError 内嵌 APIError 元数据保留、敏感字段排除。
+- 空事件页推进、跨进程游标恢复、ExpectedTaskID/SkipFrames/Limit、安全元数据存储。
+- 错误/无效/倒退游标和不匹配 task 不得作为有效事件页。
+
+`go test ./...`、`go test -race ./...`、`go vet ./...`、构建和 Skill `quick_validate.py` 均通过；`git diff --check` 通过。固定 SDK v0.3.19 未改动。测试使用本地接口替身和合成 SDK 类型，不包含真实网络或 SDK HTTP 线级契约验收，不读取真实凭证或 Keychain，不重启资源、不重跑在线任务。本轮未更新旧源码 ZIP，也不把修复作为远端故障根因已确认的证据。

@@ -48,12 +48,13 @@ go vet ./...
 | `task wait [--turn ID] [--timeout 25s]` | 支持 | 默认读取已保存 turn，超时范围 0–60s，超时不取消远端工作 |
 | `task answer --turn ID --answer-file FILE` | 支持 | 还需 `--accept-runtime-limits`，见预算限制 |
 | `task cancel --turn ID` | 支持 | 精确取消；canceling 后还需 wait |
-| `artifacts pull --out DIR` | 支持 | 回收 session 全部非 upload 产物，包含浏览器下载 |
+| `task events [--task ID]` | 不支持 | 只读回收一页事件元数据，保存 task ID 与续读游标 |
+| `artifacts pull --out DIR` | 支持 | 回收非 upload 注册产物，以及当前 task 各 turn 的 workdir 文件引用 |
 | `computer stop --out DIR --confirm-quiescent` | 支持 | 回收后停止；拒绝活动 turn、其他 session 或回收失败 |
 
-JSON 命令结果写 stdout；wait 进度写 stderr。`--help` 和 Cobra completion 是普通文本。`ok:true` 只表示 CLI 操作成功，**不是外部业务动作成功**。即使 turn 为 completed，也必须审阅 summary、usage 和实际产物。failed/canceled/needs_input/未知状态均原样保留；不要仅凭退出码判断业务成功。answered 的 next_turn_id 不自动跟随，显式指定新 ID 读取。
+JSON 命令结果写 stdout；wait 进度写 stderr。`--help` 和 Cobra completion 是普通文本。`ok:true` 只表示 CLI 操作成功，**不是外部业务动作成功**。即使 turn 为 completed，也必须审阅 terminal_reason、summary、usage 和实际产物。failed/canceled/needs_input/未知状态均原样保留；不要仅凭退出码判断业务成功。answered 的 next_turn_id 不自动跟随，显式指定新 ID 读取。
 
-退出码：0 调用成功；2 参数/配置/本地 I/O 失败；3 disabled、缺少执行确认或不支持；4 凭证/权限；6 状态冲突、锁冲突、产物校验失败；7 远端失败或提交结果不确定。错误对象包含稳定 `code` 和固定说明，不输出底层服务器错误、请求头或凭证。
+退出码：0 调用成功；2 参数/配置/本地 I/O 失败；3 disabled、缺少执行确认或不支持；4 凭证/权限；6 状态冲突、锁冲突、产物校验失败；7 远端失败或提交结果不确定。错误对象包含稳定 `code` 和固定说明；SDK API 错误额外保留安全的 `status`、`request_id`、`problem_type`（不安全字段省略）。不输出原始错误正文、请求头或凭证。
 
 ## 真实 Pine 接入（需另行授权）
 
@@ -111,3 +112,11 @@ create 会创建并运行 Computer，不是单纯离线生成密钥的命令。�
 详见 [验证记录](docs/verification.md) 和 [SDK 合约记录](docs/sdk-contract.md)。本地 mock 测试和真实 SDK 编译通过；在线生命周期调用已验证，但只读业务及非空产物下载尚未成功，详见最新在线记录。
 
 开发架构和扩展说明见 [中文开发文档](docs/development.md)。包装密钥丢失无法解密，初版没有密钥轮换、回滚防护或硬件隔离；不要复制 pending vault 到新目录规避恢复检查。
+
+## 离线接入修复（2026-10-22）
+
+- SDK `Stop` 必须返回 `true, nil` 才保存已停止；`false, nil` 返回 `stop_unconfirmed`，不自动重试。先独立核实远端状态，不能据此再次启动。
+- `artifacts pull` 同时读取 `ListArtifacts("")` 和 `Agent.Turns` 的 `Result.Artifacts`；workdir 引用通过 `OpenFile` 回收，保留相对目录。路径、大小、SHA256 或读取失败都会阻止停止。文件引用不是快照，建议每个 turn 结束即回收。浏览器下载只有已注册为 artifact 或被 Agent 复制到 workdir 并列入结果时才能覆盖。
+- `task status/wait` 等结果保存 `terminal_reason`、summary、usage 到私有 `state.json`。失败后、停止前用 `task events` 发现当前 task，再用 `task events --task TASK_ID` 逐页续读，直到 `next_after >= latest_event_id`；空页不代表结束。只保存事件 ID、turn ID、类型、时间，不保存 Payload/Raw 或截图。此命令不提交新诊断、不重跑任务；取证失败要报告，不能把缺少事件当作任务成功。
+
+本轮仅离线验证；这些客户端缺口不能证明此前远端环境故障或费用异常的根因。完整费用与 token 限额口径仍待 Pine 确认，answer 仍没有独立硬预算。

@@ -1,6 +1,6 @@
 # 验证结果
 
-最新在线记录：2026-10-22 已获授权执行首次在线测试，生命周期调用完成并停止资源，但只读任务 failed、产物为 0；详见 [在线记录](online-verification.md)。下文初版和首次创建补充为当时的离线验证记录。
+最新在线记录：2026-10-22 获授权使用 max-tokens=0、max-wall=60s 执行最小只读闭环，任务 completed、非空产物已回收、资源已确认停止；主标题未独立核实，完整费用未取得，详见 [在线记录](online-verification.md)。下文早期记录保留各轮当时的验证边界。
 
 时间：2026-10-22；环境：Go 1.25.5，darwin/arm64。
 
@@ -51,3 +51,12 @@ live start 已实现官方 StartComputer 和 AES-256-GCM 可插拔 Vault，需�
 共 31 个测试函数（含子用例）。新增 CLI 回归覆盖省略 max-tokens 与显式 0 的同请求重放、正数覆盖、预算变化触发 request_mismatch、负数拒绝以及 wall 非正/超过 1h 拒绝；SDK JSON 测试确认 0 省略 max_tokens、正数原样发送、max_wall_ms=60000 保留。
 
 `go test ./...`、`go test -race ./...`、`go vet ./...`、构建、Skill quick_validate 和 git diff --check 均通过。构建产物的 task run --help 已显示默认 0 及非费用上限说明。没有修改 SDK、读取真实凭证、重启资源或重跑在线任务；本轮没有验证取消 token 上限后的在线业务成功。首次失败原因依据用户转述的 Pine 回复更正，第二次原因不直接外推。
+
+
+## 零 token 上限在线闭环（2026-10-22）
+
+客户端 0a96358、SDK v0.3.19：新身份安全保存、创建 Computer/session、单次 Run/Wait、非空产物下载、事件元数据读取与停止均成功。任务 state/terminal_reason 均为 completed，耗时 29382ms。注册 artifact 和 workdir 两条回收路径得到同一份 259 字节文本，内容与 SHA256 相同；saved=2 不是两份独立产物。停止返回 true,nil，随后独立只读查询返回 runtime NotFoundError。
+
+Agent 计价 USD 0.011489736，total_tokens=118888（含缓存读写），compute=null。主标题缺失判断仅来自 Agent 和文件，没有 DOM/截图独立验证；Computer/egress 精确费用及完整总额尚未取得。未执行 answer、账号写入、发布、重启或额外任务。本次证明最小执行及回收闭环成功，不证明业务字段全部准确、时间限制触发或总费用硬上限。详见 online-verification.md。
+
+本次文档同步仅检查既有本地证据、Markdown 差异与链接、Skill quick_validate；未改代码，未重跑 Go 测试或在线验收，未启动资源。

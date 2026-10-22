@@ -4,7 +4,7 @@
 
 初版离线开发未登录 Pine、未创建持久凭证、未启动计费 Computer、未写入真实账号、未发布部署。没有改动 Nobis、安装全局 Skill 或创建远程仓库。
 
-最新在线验收：2026-10-22 获授权创建身份并运行最小闭环，资源已停止；首次只读任务 failed，产物为 0；根据用户转述的 Pine 回复，原因是 2000 token 预算低于基础指令开销，而非环境损坏，尚未完成业务成功验收。费用与错误详见 [在线记录](docs/online-verification.md)。
+最新在线验收：2026-10-22 使用 `--max-tokens 0 --max-wall 60s` 完成一次获授权的最小只读闭环，任务 `completed`，非空文本产物已下载，资源已确认停止。Agent 耗时 29.382 秒、计价 US$0.011489736；主标题未独立核实，Computer/流量完整费用未取得。首次低预算失败及本次结果详见 [在线记录](docs/online-verification.md)。
 
 ## 构建和离线演示
 
@@ -81,7 +81,7 @@ CLI 不自动搜索用户目录、dotenv、已有密钥或登录状态。纯重�
 ./bin/pine-agent --config ./config.json --mode live --allow-live --state-dir ./new-live-state computer create --confirm-new-identity --confirm-billing --idle-timeout 5m
 ```
 
-create 会创建并运行 Computer，不是单纯离线生成密钥的命令。它不读取 PINE_CREDENTIALS_JSON/PINE_BINDING_JSON，也不输出密钥或 binding token。成功后在同目录执行 session/task 命令；未知结果先从 Pine 独立核查，再 reconcile，不得删除 Vault 或换目录重建身份以规避 pending。CLI 不提供远端核查工具，API 权限与首次在线流程仍待授权验收。
+create 会创建并运行 Computer，不是单纯离线生成密钥的命令。它不读取 PINE_CREDENTIALS_JSON/PINE_BINDING_JSON，也不输出密钥或 binding token。成功后在同目录执行 session/task 命令；未知结果先从 Pine 独立核查，再 reconcile，不得删除 Vault 或换目录重建身份以规避 pending。CLI 不提供远端核查命令；本项目已有一次成功在线闭环记录，不代表其他项目的 API 权限或所有任务均已验收。
 
 真实启动另需宿主注入 `PINE_VAULT_KEY_BASE64`（32 字节随机包装密钥的标准 base64），并执行 `computer start --confirm-billing --idle-timeout 5m`。`computer start` 从 PINE_CREDENTIALS_JSON 导入已有身份；不生成新身份。首次创建使用 `computer create`，无需 credentials/binding 输入。密钥由外部可信秘密管理器保存，不使用密码派生，也不在示例中创建。后续命令自动优先从同目录 vault.enc 解密重连。
 
@@ -109,7 +109,7 @@ create 会创建并运行 Computer，不是单纯离线生成密钥的命令。�
 
 ## 验证边界
 
-详见 [验证记录](docs/verification.md) 和 [SDK 合约记录](docs/sdk-contract.md)。本地 mock 测试和真实 SDK 编译通过；在线生命周期调用已验证，但只读业务及非空产物下载尚未成功，详见最新在线记录。
+详见 [验证记录](docs/verification.md) 和 [SDK 合约记录](docs/sdk-contract.md)。本地 mock 测试和真实 SDK 编译通过；在线生命周期、任务 completed、非空产物回收及停止已验证；产物中的主标题判断未独立核实，完整实际费用未取得，详见最新在线记录。
 
 开发架构和扩展说明见 [中文开发文档](docs/development.md)。包装密钥丢失无法解密，初版没有密钥轮换、回滚防护或硬件隔离；不要复制 pending vault 到新目录规避恢复检查。
 

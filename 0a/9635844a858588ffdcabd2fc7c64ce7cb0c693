@@ -1,0 +1,38 @@
+docs/sdk-contract.md
+  s_496b836c295ba4::t_688617478d57f1 31-33
+cmd/root_test.go
+  s_496b836c295ba4::t_97c794676f67a5 73-115
+skills/pine-delegate/SKILL.md
+  s_496b836c295ba4::t_688617478d57f1 21
+cmd/root.go
+  s_496b836c295ba4::t_97c794676f67a5 255-256,273
+engine/pine_test.go
+  s_496b836c295ba4::t_97c794676f67a5 4,8,29-46
+  s_496b836c295ba4::t_839724c51ee6ee 47-48
+docs/development.md
+  s_496b836c295ba4::t_688617478d57f1 50,85,101
+docs/online-verification.md
+  s_496b836c295ba4::t_688617478d57f1 6,15,17,21-23
+docs/TODO.md
+  s_496b836c295ba4::t_688617478d57f1 32-33,45-52
+README.md
+  s_496b836c295ba4::t_688617478d57f1 7,46,92,97,122
+docs/verification.md
+  s_496b836c295ba4::t_7227611e8111d9 48-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0a9635844a858588ffdcabd2fc7c64ce7cb0c693",
+  "prompts": {},
+  "sessions": {
+    "s_496b836c295ba4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a161a5-5fc8-7110-9c4f-227d27bb53b6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}

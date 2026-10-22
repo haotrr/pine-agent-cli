@@ -1,0 +1,9 @@
+.PHONY: test build check
+
+test:
+	go test ./...
+build:
+	go build -o bin/pine-agent .
+check:
+	go vet ./...
+	go test -race ./...

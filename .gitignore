@@ -1,0 +1,13 @@
+bin/
+.pine-agent/
+*-state/
+*-artifacts/
+artifacts/
+config.json
+.env*
+
+vault.enc
+.vault-*
+
+# Private online evidence and support correspondence
+reports/

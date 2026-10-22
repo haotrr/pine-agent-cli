@@ -1,0 +1,27 @@
+docs/TODO.md
+  s_496b836c295ba4::t_bf2efb8a309271 3,53-63
+README.md
+  s_496b836c295ba4::t_bf2efb8a309271 7,84,112
+docs/online-verification.md
+  s_496b836c295ba4::t_bf2efb8a309271 3-31,39,47,51
+skills/pine-delegate/SKILL.md
+  s_496b836c295ba4::t_bf2efb8a309271 31-32
+docs/verification.md
+  s_496b836c295ba4::t_bf2efb8a309271 3,54-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5bd66f0c264e3dca1bab9dfc4e2fe5ed8a1951ba",
+  "prompts": {},
+  "sessions": {
+    "s_496b836c295ba4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a161a5-5fc8-7110-9c4f-227d27bb53b6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}

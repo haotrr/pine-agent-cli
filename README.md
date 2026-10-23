@@ -37,6 +37,7 @@ go vet ./...
 
 | 命令 | mock | live |
 |---|---|---|
+| `auth setup` | 本地 Keychain 配置，不访问 Pine | 与模式无关，不授予 live/计费权限 |
 | `doctor` | 离线报告 | 离线报告，不检查登录、网络、权限或读取凭证 |
 | `computer create` | 本地模拟初始化 | 生成并加密保存新身份后创建 Computer；需 `--allow-live --confirm-new-identity --confirm-billing` |
 | `computer start` | 本地演示 | 启动已有 Computer，需 `--allow-live --confirm-billing` 与加密 Vault |
@@ -60,13 +61,23 @@ JSON 命令结果写 stdout；wait 进度写 stderr。`--help` 和 Cobra complet
 
 v1 可重连运行中的 Computer，也可通过官方 StartComputer 启动已有 Computer。支持 `computer create` 首次创建新身份；自动 Recover/Attach 不在范围内；不要为了尝试 CLI 自行登录或申请密钥。项目审批不等于 Agent/API/Shell 权限开通。没有直接 shell、MCP 或浏览器控制命令。
 
-获准后，由可信宿主/秘密管理器为当前进程注入：
+### 一次性认证配置（macOS）
 
-- `PINE_API_KEY`：项目 key；
-- `PINE_CREDENTIALS_JSON`：SDK `Credentials` 的合法 JSON；
-- `PINE_BINDING_JSON`：同一个正在运行的 Computer 的 SDK `Binding` JSON（含实时 token）。
+```sh
+./bin/pine-agent auth setup
+```
 
-CLI 不自动搜索用户目录、dotenv、已有密钥或登录状态。纯重连模式不持久化秘密；真实 start 将 SDK credentials 与 binding 加密保存在 state-dir/vault.enc，项目 key 和包装密钥永不写盘。不要把秘密写入配置、Skill、目标文本、命令行参数、日志或源码。环境变量是 v1 注入边界，宿主需隔离其他同用户进程；Vault 接口可替换为 Keychain 或远程秘密存储；当前实现是 AES-256-GCM 文件库，不是 macOS Keychain。`examples/config.json` 仅含 disabled 模式与空 endpoint。复制后填入获批项目的 HTTPS endpoint，再显式选择 live。
+在本地终端隐藏输入项目 API key；若已注入 `PINE_API_KEY` 则直接使用。默认 endpoint 是 `https://pinesandbox.io`，其他项目用 `--endpoint https://YOUR_PROJECT`，后续命令保持同一 endpoint。setup 将 API key 和自动生成的 32 字节随机包装密钥作为一条记录保存在 macOS Keychain，按 endpoint 隔离；若注入 `PINE_VAULT_KEY_BASE64`，首次 setup 会保存该有效密钥。重复 setup 不换钥、不覆盖已有记录；与现有记录不一致的环境值会报冲突。成功只表示本地保存，**不检查 API 权限，不创建身份，不启动 Computer，也不产生 Pine 费用**。
+
+后续获准的 live 命令自动读取本 CLI 的 Keychain 条目；macOS 可能要求解锁或允许访问。无需每次 source 或注入包装密钥。需要 macOS + cgo 构建；Linux、CI 或无 cgo 构建使用环境变量：
+
+- `PINE_API_KEY`：项目 key。
+- `PINE_VAULT_KEY_BASE64`：32 字节包装密钥的标准 base64，由可信秘密管理器保存。
+- `PINE_CREDENTIALS_JSON` / `PINE_BINDING_JSON`：仅导入已有身份或无 Vault 重连时需要；首次 `computer create` 不需要。
+
+环境变量逐项优先于 Keychain；显式空值或格式错误会报错，不静默回退。CLI 只读取自己按 endpoint 保存的条目，不搜索其他密钥、dotenv 或浏览器登录。API key 和包装密钥不写入普通配置或状态文件；身份和 binding 仍以 AES-256-GCM 保存在 state-dir/vault.enc。不要把秘密放入聊天、Skill、目标文本、命令行参数、日志或源码。
+
+旧 Vault 必须使用原包装密钥；setup 生成的新密钥不能解密历史 Vault。此版本不自动迁移历史宿主 Keychain 条目、不轮换或重置密钥；丢失原密钥无法恢复。读取失败不能删除 Vault 或换目录绕过 pending。`examples/config.json` 的空 endpoint 使用上述默认值。
 
 获得授权后的命令形态：
 
@@ -75,7 +86,7 @@ CLI 不自动搜索用户目录、dotenv、已有密钥或登录状态。纯重�
 ./bin/pine-agent --config ./config.json --mode live --allow-live --state-dir ./live-state task run --request-id approved-message-001 --goal-file ./approved-goal.txt
 ```
 
-首次创建的命令形态（仅在获得身份持久化及计费授权、宿主已安全注入项目 key 和包装密钥后执行）：
+首次创建的命令形态（仅在获得身份持久化及计费授权、已完成 auth setup 或宿主已安全注入项目 key 和包装密钥后执行）：
 
 ```sh
 ./bin/pine-agent --config ./config.json --mode live --allow-live --state-dir ./new-live-state computer create --confirm-new-identity --confirm-billing --idle-timeout 5m
@@ -83,7 +94,7 @@ CLI 不自动搜索用户目录、dotenv、已有密钥或登录状态。纯重�
 
 create 会创建并运行 Computer，不是单纯离线生成密钥的命令。它不读取 PINE_CREDENTIALS_JSON/PINE_BINDING_JSON，也不输出密钥或 binding token。成功后在同目录执行 session/task 命令；未知结果先从 Pine 独立核查，再 reconcile，不得删除 Vault 或换目录重建身份以规避 pending。CLI 不提供远端核查命令；本项目已有一次成功在线闭环记录，不代表其他项目的 API 权限或所有任务均已验收。
 
-真实启动另需宿主注入 `PINE_VAULT_KEY_BASE64`（32 字节随机包装密钥的标准 base64），并执行 `computer start --confirm-billing --idle-timeout 5m`。`computer start` 从 PINE_CREDENTIALS_JSON 导入已有身份；不生成新身份。首次创建使用 `computer create`，无需 credentials/binding 输入。密钥由外部可信秘密管理器保存，不使用密码派生，也不在示例中创建。后续命令自动优先从同目录 vault.enc 解密重连。
+真实启动需要可用的包装密钥（Keychain 或环境变量），并执行 `computer start --confirm-billing --idle-timeout 5m`。`computer start` 从 PINE_CREDENTIALS_JSON 导入已有身份；不生成新身份。首次创建使用 `computer create`，无需 credentials/binding 输入。后续命令自动从同目录 vault.enc 解密重连。
 
 创建或启动前原子保存加密 prepared/pending 记录。create 使用官方 GenerateCredentials 离线生成完整身份并加密保存，然后调用 CreateComputer；成功后保存 Credentials/Binding。Vault 记录 create/start 操作类型，不允许交叉使用；旧版无类型记录按 start 处理。pending 期间绝不再次调用 CreateComputer/StartComputer；失败也按未知处理。先独立核查真实 Pine runtime，再通过环境注入核实后的 PINE_BINDING_JSON，执行 `computer reconcile --confirm-binding-verified`。此命令只验证格式/身份/endpoint 并存储，不能证明远端健康。ready 重复原命令仅重连，不再次创建或启动。prepared 可重试原命令并复用已保存身份；首次保存失败时尚未发出远端请求。
 

@@ -64,9 +64,9 @@ stdout 为 JSON `{ok,mode,data}` 或 `{ok:false,error:{code,message}}`，进度�
 - PINE_API_KEY：项目 key，不持久化。
 - PINE_CREDENTIALS_JSON：SDK Credentials，首次启动导入已有身份；环境重连也可使用。
 - PINE_BINDING_JSON：环境重连或经核验后 reconcile 的 SDK Binding。
-- PINE_VAULT_KEY_BASE64：32 字节包装密钥的标准 base64。可信秘密管理器负责生成和保存；不使用人类口令，不写盘。
+- PINE_VAULT_KEY_BASE64：32 字节包装密钥的标准 base64。环境模式由可信秘密管理器生成和保存；macOS auth setup 可生成并存入 Keychain，不使用人类口令。
 
-`Vault` 接口仅 Load/Save，可替换为 Keychain/远程秘密管理器。当前生产代码提供 AES-256-GCM 加密文件，**没有实现或安装 Keychain 条目**。每次写入使用密码学随机 nonce，固定版本 AAD，认证失败拒绝读取。state-dir/vault.enc 包含加密的 endpoint、Credentials、Binding 和阶段；项目 key、包装密钥不在其中。以 0600 临时文件写密文、Sync、原子替换、目录 Sync；不写明文临时文件。state-dir 必须真实目录且私有（新建 0700）；已存在的公开目录或符号链接被拒绝。
+`Vault` 接口仅 Load/Save，可替换为 Keychain/远程秘密管理器。身份仍使用 AES-256-GCM 加密文件；新增 auth setup 使用 macOS Security.framework 的 SecItem API 管理项目 key 和包装密钥。每次写入使用密码学随机 nonce，固定版本 AAD，认证失败拒绝读取。state-dir/vault.enc 包含加密的 endpoint、Credentials、Binding 和阶段；项目 key、包装密钥不在其中。以 0600 临时文件写密文、Sync、原子替换、目录 Sync；不写明文临时文件。state-dir 必须真实目录且私有（新建 0700）；已存在的公开目录或符号链接被拒绝。
 
 解密密钥不保存在源码、配置或 Skill 中。错误不输出底层 SDK 内容；summary 遮盖已注入秘密的直接匹配。业务产物仍可能含敏感数据，不应把秘密交给目标文本。内存、同用户进程和环境变量不是硬件隔离，Go 不保证清除字符串；此版不做轮换、硬件存储或密文回滚检测。不要复制 Vault 到另一个目录并行操作同一身份。
 
@@ -129,7 +129,7 @@ DEMO_DIR=$(mktemp -d)
 
 读取 skills/pine-delegate/SKILL.md，使用项目构建的二进制。仅在用户要求安装时复制到相应 Agent 的 skill 目录；本次不全局安装。这个 Skill 约束宿主如何委托，不是 Pine learned skill，不会训练或发布 Pine 技能。
 
-当前真实 SDK 编译和本地模拟通过；在线 endpoint、项目能力、账单、实际任务和结果没有验证。开发只证明客户端路径与本地不变量。后续可实现 Keychain provider、密钥轮换、结构化权限错误、跨进程长期调度和总预算治理；这些均不是当前功能。
+当前真实 SDK 编译和本地模拟通过；在线 endpoint、项目能力、账单、实际任务和结果没有验证。开发只证明客户端路径与本地不变量。后续可实现密钥轮换、结构化权限错误、跨进程长期调度和总预算治理；这些均不是当前功能。
 
 ## 11. 代码自审结论
 
@@ -137,7 +137,7 @@ DEMO_DIR=$(mktemp -d)
 
 下载保留 no-clobber 和 os.Root 防逃逸，测试覆盖符号链接与内容校验。剩余风险是同用户本地篡改/密文回滚、跨目录并发和远端写入竞态，已明确限制，不声称完全消除。没有执行在线安全扫描或线上验收。
 
-首次创建与启动同样需要授权。create 不要求外部 credentials/binding，只需要宿主注入项目 key 和 Vault 包装密钥；成功后在同目录继续会话。网络失败、身份不符、binding 获取失败或 ready 保存失败均保留 pending。独立核查后 reconcile 支持 create/start 两种 pending，不证明远端健康。新建身份与 API 权限的线上可用性尚未验证。
+首次创建与启动同样需要授权。create 不要求外部 credentials/binding，只需要 auth setup 保存或宿主注入项目 key 和 Vault 包装密钥；成功后在同目录继续会话。网络失败、身份不符、binding 获取失败或 ready 保存失败均保留 pending。独立核查后 reconcile 支持 create/start 两种 pending，不证明远端健康。新建身份与 API 权限的线上可用性尚未验证。
 
 ## 12. 失败证据与只读事件
 
@@ -148,3 +148,11 @@ Turn 新增 terminal_reason，Service.Remember 将各 turn 的安全结果写入
 只保留事件 ID、turn ID、类型、时间，未保留 Payload/Raw、输入文本或帧，因此不是完整原始事件导出。取证是显式只读命令，不自动重跑任务，也不作为停止的强制门槛；停止前应收集所需证据，失败须说明缺口。mock 不模拟事件 API。
 
 适配测试通过与 SDK 相同签名的消费端接口注入替身；未改动固定 SDK、生成代码或第三方目录。此轮不验证服务端行为，历史在线结论见 online-verification.md。
+
+## 本地认证配置（2026-10-23）
+
+`auth setup` 不经过 live Backend，不创建状态目录、不调用 Pine。默认 endpoint 为 https://pinesandbox.io；空配置值不覆盖默认值。终端输入通过 x/term 隐藏回显；非终端必须预先注入 PINE_API_KEY，不接受密钥参数或自动读管道。环境变量逐项优先；显式空值拒绝，不回退。
+
+AuthStore 的 Get/Add 接口便于替身测试。macOS+cgo 实现将版本、API key、包装密钥原子保存为单条 generic password：service=`pine-agent-cli.auth.v1`，account=规范化 HTTPS endpoint（host 小写，去掉末尾斜线）。禁用同步，使用 WhenUnlockedThisDeviceOnly；只 Add、不 Update，重复配置保留原记录，保存竞争报错而不覆盖。密钥经内存传递给 Security.framework，不调用带密钥参数的 security 命令。系统访问控制可能显示授权提示；本次仅验证编译，未实测真实 Keychain ACL。
+
+非 macOS 或 CGO_ENABLED=0 使用环境模式；不降级到明文文件。API key 在 SDK 适配器中加入已知秘密遮盖集合。VaultForEndpoint 解析包装密钥，原 VaultFromEnv 保持环境专用接口，旧宿主仍兼容。旧 Vault 不自动迁移，不能通过换钥、删除状态或换目录绕过 pending。此版本不提供密钥轮换/删除；同用户进程和内存访问风险仍存在。

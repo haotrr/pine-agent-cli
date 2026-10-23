@@ -60,3 +60,13 @@ live start 已实现官方 StartComputer 和 AES-256-GCM 可插拔 Vault，需�
 Agent 计价 USD 0.011489736，total_tokens=118888（含缓存读写），compute=null。主标题缺失判断仅来自 Agent 和文件，没有 DOM/截图独立验证；Computer/egress 精确费用及完整总额尚未取得。未执行 answer、账号写入、发布、重启或额外任务。本次证明最小执行及回收闭环成功，不证明业务字段全部准确、时间限制触发或总费用硬上限。详见 online-verification.md。
 
 本次文档同步仅检查既有本地证据、Markdown 差异与链接、Skill quick_validate；未改代码，未重跑 Go 测试或在线验收，未启动资源。
+
+## 2026-10-23：auth setup 与 macOS Keychain
+
+新增本地 auth setup、隐藏终端输入、按 endpoint 保存的 API key/包装密钥原子记录，以及 live SDK/Vault 的环境优先与 Keychain 回退。默认 endpoint 为 https://pinesandbox.io。重复 setup 不覆盖记录，未知结果禁止盲目重试的生命周期逻辑保持不变。
+
+新增离线测试覆盖：随机 32 字节密钥生成、已有密钥导入、重复配置不换钥、环境冲突、空/非法输入、存储读取/保存失败、损坏记录、endpoint 隔离、环境覆盖不读取 Keychain、错误密钥拒绝解密且不改变旧 pending Vault、CLI 输出无秘密及帮助/默认值。使用假的 AuthStore 与合成凭证；不访问真实 Keychain。
+
+验证通过：工作区与独立待提交快照的 `go test -race ./...`、`go vet ./...`、正常 macOS+cgo 构建；`CGO_ENABLED=0 go test ./...` 验证环境模式；构建产物 auth setup --help；仓库及已安装 Skill 的 quick_validate；git diff --check。工作区原有网站登录 Secrets 改动未纳入本次提交，独立快照不依赖它们。
+
+未配置真实 API key、未创建或读取真实 Keychain 条目，未访问 Pine、创建身份、启动资源或重跑任务。Security.framework 适配仅编译验证，真实系统授权弹窗/访问控制及跨构建重用尚未实测。历史在线结果的主标题未核实、完整 Computer/egress 费用未取得边界仍保留。本次未重新打包旧源码 ZIP。

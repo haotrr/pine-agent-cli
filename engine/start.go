@@ -75,7 +75,7 @@ func LiveStart(ctx context.Context, dir, endpoint string, ttl time.Duration) (*P
 	if !strings.HasPrefix(endpoint, "https://") {
 		return nil, Fail("config", "HTTPS endpoint required", 2)
 	}
-	v, e := VaultFromEnv(dir)
+	v, e := VaultForEndpoint(dir, endpoint)
 	if e != nil {
 		return nil, e
 	}
@@ -87,7 +87,11 @@ func LiveStart(ctx context.Context, dir, endpoint string, ttl time.Duration) (*P
 	} else if e != nil {
 		return nil, e
 	}
-	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: os.Getenv("PINE_API_KEY")})
+	apiKey, e := APIKeyForEndpoint(endpoint)
+	if e != nil {
+		return nil, e
+	}
+	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: apiKey})
 	if e != nil {
 		return nil, Fail("credentials", "invalid SDK client configuration", 4)
 	}
@@ -102,9 +106,9 @@ func LiveStart(ctx context.Context, dir, endpoint string, ttl time.Duration) (*P
 	if e != nil {
 		return nil, e
 	}
-	return reconnectRecord(ctx, client, r)
+	return reconnectRecord(ctx, client, r, apiKey)
 }
-func reconnectRecord(ctx context.Context, client *pine.Client, r *VaultRecord) (*Pine, error) {
+func reconnectRecord(ctx context.Context, client *pine.Client, r *VaultRecord, apiKey string) (*Pine, error) {
 	if r.Phase != "ready" || r.Binding == nil {
 		return nil, Fail("start_unconfirmed", "vault has no confirmed running binding", 7)
 	}
@@ -115,13 +119,13 @@ func reconnectRecord(ctx context.Context, client *pine.Client, r *VaultRecord) (
 	b, _ := json.Marshal(r)
 	var raw any
 	_ = json.Unmarshal(b, &raw)
-	return &Pine{computer: comp, secrets: append(secretStrings(raw), os.Getenv("PINE_API_KEY"))}, nil
+	return &Pine{computer: comp, secrets: append(secretStrings(raw), apiKey)}, nil
 }
 func NewPineStored(ctx context.Context, dir, endpoint string) (*Pine, error) {
 	if _, e := os.Stat(dir + "/vault.enc"); os.IsNotExist(e) {
 		return NewPine(ctx, endpoint)
 	}
-	v, e := VaultFromEnv(dir)
+	v, e := VaultForEndpoint(dir, endpoint)
 	if e != nil {
 		return nil, e
 	}
@@ -132,11 +136,15 @@ func NewPineStored(ctx context.Context, dir, endpoint string) (*Pine, error) {
 	if endpoint != r.Endpoint {
 		return nil, Fail("vault_endpoint", "vault belongs to another endpoint", 6)
 	}
-	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: os.Getenv("PINE_API_KEY")})
+	apiKey, e := APIKeyForEndpoint(endpoint)
+	if e != nil {
+		return nil, e
+	}
+	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: apiKey})
 	if e != nil {
 		return nil, Fail("credentials", "invalid SDK client configuration", 4)
 	}
-	return reconnectRecord(ctx, client, r)
+	return reconnectRecord(ctx, client, r, apiKey)
 }
 
 // Reconcile uses only explicitly supplied, externally verified binding data. No Start/Recover.
@@ -161,11 +169,15 @@ func LiveCreate(ctx context.Context, dir, endpoint string, ttl time.Duration) (*
 	if !strings.HasPrefix(endpoint, "https://") {
 		return nil, Fail("config", "HTTPS endpoint required", 2)
 	}
-	v, e := VaultFromEnv(dir)
+	v, e := VaultForEndpoint(dir, endpoint)
 	if e != nil {
 		return nil, e
 	}
-	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: os.Getenv("PINE_API_KEY")})
+	apiKey, e := APIKeyForEndpoint(endpoint)
+	if e != nil {
+		return nil, e
+	}
+	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: apiKey})
 	if e != nil {
 		return nil, Fail("credentials", "invalid SDK client configuration", 4)
 	}
@@ -180,5 +192,5 @@ func LiveCreate(ctx context.Context, dir, endpoint string, ttl time.Duration) (*
 	if e != nil {
 		return nil, e
 	}
-	return reconnectRecord(ctx, client, r)
+	return reconnectRecord(ctx, client, r, apiKey)
 }

@@ -41,7 +41,7 @@ func NewRoot() *cobra.Command {
 	root := &cobra.Command{Use: "pine-agent", Short: "Delegate to Pine Agent; safe offline default", SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().StringVar(&cfgPath, "config", "", "non-secret JSON config")
 	root.PersistentFlags().StringVar(&mode, "mode", "disabled", "disabled, mock, live")
-	root.PersistentFlags().StringVar(&endpoint, "endpoint", "", "Pine project HTTPS endpoint")
+	root.PersistentFlags().StringVar(&endpoint, "endpoint", engine.DefaultEndpoint, "Pine project HTTPS endpoint")
 	root.PersistentFlags().StringVar(&dir, "state-dir", ".pine-agent", "private local operation journal")
 	root.PersistentFlags().BoolVar(&live, "allow-live", false, "confirm this invocation is authorized to access Pine")
 	root.PersistentPreRunE = func(c *cobra.Command, args []string) error {
@@ -57,10 +57,10 @@ func NewRoot() *cobra.Command {
 			if e = d.Decode(&v); e != nil {
 				return engine.Fail("config", "invalid non-secret config", 2)
 			}
-			if !c.Flags().Changed("mode") && !root.PersistentFlags().Changed("mode") {
+			if !c.Flags().Changed("mode") && !root.PersistentFlags().Changed("mode") && v.Mode != "" {
 				mode = v.Mode
 			}
-			if !root.PersistentFlags().Changed("endpoint") {
+			if !root.PersistentFlags().Changed("endpoint") && v.Endpoint != "" {
 				endpoint = v.Endpoint
 			}
 		}
@@ -69,6 +69,7 @@ func NewRoot() *cobra.Command {
 		}
 		return nil
 	}
+	root.AddCommand(authCommand(&endpoint, engine.NativeAuthStore(), os.LookupEnv, nil))
 	emit := func(c *cobra.Command, data any) error {
 		return json.NewEncoder(c.OutOrStdout()).Encode(map[string]any{"ok": true, "mode": mode, "data": data})
 	}
@@ -145,7 +146,7 @@ func NewRoot() *cobra.Command {
 			ctx, cancel := context.WithTimeout(c.Context(), 90*time.Second)
 			defer cancel()
 			if st.State.Computer != "" {
-				v, er := engine.VaultFromEnv(dir)
+				v, er := engine.VaultForEndpoint(dir, endpoint)
 				if er != nil {
 					return er
 				}
@@ -188,7 +189,7 @@ func NewRoot() *cobra.Command {
 			return e
 		}
 		defer st.Close()
-		v, e := engine.VaultFromEnv(dir)
+		v, e := engine.VaultForEndpoint(dir, endpoint)
 		if e != nil {
 			return e
 		}

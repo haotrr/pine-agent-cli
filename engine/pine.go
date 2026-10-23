@@ -26,7 +26,11 @@ func NewPine(ctx context.Context, endpoint string) (*Pine, error) {
 	if json.Unmarshal([]byte(os.Getenv("PINE_CREDENTIALS_JSON")), &creds) != nil || json.Unmarshal([]byte(os.Getenv("PINE_BINDING_JSON")), &binding) != nil {
 		return nil, Fail("credentials", "inject SDK credentials and binding JSON through the environment", 4)
 	}
-	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: os.Getenv("PINE_API_KEY")})
+	apiKey, e := APIKeyForEndpoint(endpoint)
+	if e != nil {
+		return nil, e
+	}
+	client, e := pine.NewClient(pine.ClientOptions{Endpoint: endpoint, APIKey: apiKey})
 	if e != nil {
 		return nil, Fail("credentials", "invalid SDK client configuration", 4)
 	}
@@ -34,7 +38,7 @@ func NewPine(ctx context.Context, endpoint string) (*Pine, error) {
 	if e != nil {
 		return nil, remote(e)
 	}
-	secrets := []string{os.Getenv("PINE_API_KEY")}
+	secrets := []string{apiKey}
 	for _, name := range []string{"PINE_CREDENTIALS_JSON", "PINE_BINDING_JSON"} {
 		var v any
 		if json.Unmarshal([]byte(os.Getenv(name)), &v) == nil {

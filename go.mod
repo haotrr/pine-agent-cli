@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/spf13/cobra v1.10.1
 	go.pinesandbox.io/computer v0.3.19
+	golang.org/x/term v0.27.0
 )
 
 require (

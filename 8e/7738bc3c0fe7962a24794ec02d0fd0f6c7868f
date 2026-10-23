@@ -1,0 +1,57 @@
+go.mod
+  s_496b836c295ba4::t_fc4d6acdfa4e58 8
+docs/online-verification.md
+  s_496b836c295ba4::t_3d0203dbed977c 5
+skills/pine-delegate/SKILL.md
+  s_496b836c295ba4::t_3d0203dbed977c 12-14,18,39
+engine/auth.go
+  s_496b836c295ba4::t_147ec9e027a126 1-3,12-14,16-20,23-24,28,30,37-38,47,65-67,113-114,160
+  s_496b836c295ba4::t_fc4d6acdfa4e58 4-11,15,21-22,25-27,29,31-36,39-46,48-53,55-64,68-112,115-159
+  s_496b836c295ba4::t_8fbb1953f9867f 54
+engine/auth_darwin.go
+  s_496b836c295ba4::t_fc4d6acdfa4e58 55-70,72-80
+  s_496b836c295ba4::t_147ec9e027a126 1-54,71,81
+docs/TODO.md
+  s_496b836c295ba4::t_3d0203dbed977c 15,64-65
+engine/pine.go
+  s_496b836c295ba4::t_fc4d6acdfa4e58 29-32
+  s_496b836c295ba4::t_33c6c9b8e02cf7 33,41
+cmd/auth.go
+  s_496b836c295ba4::t_fc4d6acdfa4e58 1-42
+README.md
+  s_496b836c295ba4::t_3d0203dbed977c 40,64,66-78,80,89,97
+engine/start.go
+  s_496b836c295ba4::t_fc4d6acdfa4e58 78,90-94,109,111,122,128,139-143,147,172-176,180,195
+docs/development.md
+  s_496b836c295ba4::t_3d0203dbed977c 67,69,132,140,151-158
+cmd/root.go
+  s_496b836c295ba4::t_fc4d6acdfa4e58 44,60,63,72
+  s_496b836c295ba4::t_fe1da5cc8ea5da 149,192
+engine/auth_other.go
+  s_496b836c295ba4::t_fc4d6acdfa4e58 6-13
+  s_496b836c295ba4::t_147ec9e027a126 1-5
+docs/verification.md
+  s_496b836c295ba4::t_d50c5d5caaf067 63-72
+cmd/auth_test.go
+  s_496b836c295ba4::t_adceb7c559b630 1-72
+engine/auth_test.go
+  s_496b836c295ba4::t_1556a59043d447 1-190
+go.sum
+  s_496b836c295ba4::t_f3b63d5f0fb39b 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8e7738bc3c0fe7962a24794ec02d0fd0f6c7868f",
+  "prompts": {},
+  "sessions": {
+    "s_496b836c295ba4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a161a5-5fc8-7110-9c4f-227d27bb53b6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "haotrr <qinhao@qimao.com>"
+    }
+  }
+}
